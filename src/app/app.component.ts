@@ -1,15 +1,40 @@
-import { Component } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
+import { NgClass } from '@angular/common';
+import { MessageService } from "./message.service";
+import { FormsModule, NgForm } from "@angular/forms";
 
 @Component({
   selector: 'app-root',
-  imports: [],
+  standalone: true,
+  imports: [NgClass, FormsModule],
   template: `
-    <h1>Welcome to {{title}}!</h1>
+    <h1>Angular Generative AI ChatBot</h1>
+
+    @for (message of messages(); track message.id) {
+    <pre class=message [ngClass]="{'from-user': message.fromUser, generating: message.generating}">{{message.text}}</pre>
+    }
+
+    <form #form="ngForm" (ngSubmit)="sendMessage(form, form.value.message)">
+      <input name="message" placeholder="Tapez un message" ngModel required autofocus [disabled]="generatingInProgress()"/>
+      <button type="submit" [disabled]="generatingInProgress() || form.invalid">Envoyer</button>
+    </form>
 
     
-  `,
-  styles: [],
+  `
 })
 export class AppComponent {
-  title = 'ng-ai';
+  private readonly messageService = inject(MessageService);
+
+  readonly messages = this.messageService.messages;
+  readonly generatingInProgress = this.messageService.generatingInProgress;
+
+  private readonly scrollOnMessageChanges = effect(() => {
+    this.messages();
+
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }))
+  });
+  sendMessage(form: NgForm, messageText: string): void {
+    this.messageService.sendMessage(messageText);
+    form.resetForm();
+  }
 }
