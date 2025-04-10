@@ -2,32 +2,52 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from '@mistralai/mistralai'
 
 const server = express();
 const PORT = process.env['PORT'] || 3000
 
-const googleAiStudioApiKey = process.env['GOOGLE_AI_STUDIO_API_KEY'];
+const ApiKey = process.env['API_KEY'];
 
-if (!googleAiStudioApiKey) {
-    throw new Error("Provide GOOGLE_AI_STUDIO_API_KEY in .env file");
+if (!ApiKey) {
+    throw new Error("Provide API_KEY in .env file");
 }
 
-const genAI = new GoogleGenerativeAI(googleAiStudioApiKey);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-const chat = model.startChat();
+const client = new Mistral({ apiKey: ApiKey })
 
 server.use(express.text());
 server.use(cors());
 
 server.post('/message', async (req, res) => {
-    const prompt: string = req.body;
-    const result = await chat.sendMessageStream(prompt);
-
-    for await (const partialMessage of result.stream) {
-        res.write(partialMessage.text())
+    const userMessage = req.body;
+    if (!userMessage) {
+        return res.status(400).json({ error: 'Message is required' });
     }
 
-    res.end();
+    try {
+        const chatResponse = await client.chat.stream({
+            model: "mistral-small-latest",
+            messages: [
+                { role: "user", content: userMessage },
+            ],
+            responseFormat: { type: "text" },
+            maxTokens: 512,
+        });
+
+        let fullResponse = '';
+        for await (const event of chatResponse) {
+            if (event.choices && event.choices.length > 0) {
+                fullResponse += event.choices[0]?.message?.content || '';
+            } else {
+                console.error('Invalid event received:', event);
+            }
+        }
+
+        res.json({ response: fullResponse });
+    } catch (error) {
+        console.error('Error calling Mistral API:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 })
 
 
