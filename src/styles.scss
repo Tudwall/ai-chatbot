@@ -9,6 +9,22 @@
     }
 }
 
+pre {
+    width: 30%;
+    box-shadow: 3px 4px 10px lightgray;
+    border-radius: 30px;
+    padding: 1em;
+}
+
+.message {
+    background-color: lightcoral;
+
+}
+
+.from-user {
+    background-color: lightblue;
+}
+
 @keyframes fade-cursor {
     from {
         opacity: 25%;
